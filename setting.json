@@ -1,0 +1,12 @@
+{
+    "tournament": {
+        "tournament_name": "Learning"
+    },
+    "simulator": {
+        "simulator_name": "fcv1"
+    },
+    "time_limit": 280,
+    "extra_end_time_limit": 218,
+    "standard_end_count": 10,
+    "match_name": "training"
+}

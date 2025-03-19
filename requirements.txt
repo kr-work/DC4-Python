@@ -1,0 +1,7 @@
+aiohttp==3.11.13
+numpy==1.26.4
+requests==2.32.3
+uuid6==2024.7.10
+pydantic==2.10.3
+python-dotenv==1.0.1
+sseclient==0.0.27
