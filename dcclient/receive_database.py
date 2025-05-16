@@ -48,8 +48,8 @@ class StoneCoordinateSchema(BaseModel):
 
 
 class ScoreSchema(BaseModel):
-    first_team_score: list
-    second_team_score: list
+    team0_score: list
+    team1_score: list
 
     class Config:
         from_attributes = True
@@ -74,7 +74,10 @@ class StateSchema(BaseModel):
     shot_number: int
     total_shot_number: int
     next_shot_team: str | None
-    remaining_time: float
+    first_team_remaining_time: float
+    second_team_remaining_time: float
+    first_team_extra_end_remaining_time: float
+    second_team_extra_end_remaining_time: float
     stone_coordinate: Optional[StoneCoordinateSchema] = None
     score: Optional[ScoreSchema] = None
 

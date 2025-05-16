@@ -1,40 +1,28 @@
+import aiohttp
+from aiohttp import BasicAuth
 import asyncio
 import json
 import logging
 import pathlib
 from datetime import datetime
 from uuid import UUID
-from uuid6 import uuid7
-
-import aiohttp
+import aiohttp.client_exceptions
 import numpy as np
-import requests
-from aiohttp import BasicAuth
-from requests.auth import HTTPBasicAuth
-from sseclient import SSEClient
+from typing import AsyncGenerator
+from aiohttp_sse_client2 import client
 
-from dcclient.load_secrets import user, password
 from dcclient.receive_database import (
-    CoordinateDataSchema,
-    ScoreSchema,
     StateSchema,
 )
 from dcclient.send_database import (
-    ClientDataModel,
-    MatchModel,
     MatchNameModel,
-    PhysicalSimulatorModel,
-    PlayerModel,
-    ScoreModel,
     ShotInfoModel,
-    StateModel,
     TeamModel,
-    TournamentModel,
 )
 
-TEAM_INFO_URL = "http://localhost:10000/store_team_config"
-SHOT_INFO_URL = "http://localhost:10000/receive_shot_info"
-RECEIVE_STATE_URL = "http://localhost:10000/receive_state_info"
+TEAM_INFO_URL = "http://localhost:10000/store-team-config"
+SHOT_INFO_URL = "http://localhost:10000/shot-info"
+SSE_URL = "http://localhost:10000/stream"
 
 # ログファイルの保存先ディレクトリを指定
 par_dir = pathlib.Path(__file__).parents[1]
@@ -46,7 +34,14 @@ log_file_path = log_dir / log_file_name
 
 
 class DCClient:
-    def __init__(self, log_level: int = logging.INFO, match_team_name: MatchNameModel = MatchNameModel.team1):
+    def __init__(
+        self,
+        match_id: UUID,
+        username: str,
+        password: str,
+        log_level: int = logging.INFO,
+        match_team_name: MatchNameModel = MatchNameModel.team1,
+    ):
         self.logger = logging.getLogger("DC_Client")
         self.logger.propagate = False
         self.logger.setLevel(log_level)
@@ -54,70 +49,68 @@ class DCClient:
         formatter = logging.Formatter(
             "%(asctime)s, %(name)s : %(levelname)s - %(message)s"
         )
-        file_handler = logging.FileHandler(log_file_path, encoding="utf-8", mode="w")
-        file_handler.setFormatter(formatter)
-        self.logger.addHandler(file_handler)
+        # file_handler = logging.FileHandler(log_file_path, encoding="utf-8", mode="w")
+        # file_handler.setFormatter(formatter)
+        # self.logger.addHandler(file_handler)
 
         st_handler = logging.StreamHandler()
         st_handler.setFormatter(formatter)
         self.logger.addHandler(st_handler)
 
-        self.match_team_name = match_team_name
-        self.logger.debug(f"user: {user}, password: {password}")
+        self.match_id: UUID = match_id
+        self.match_team_name: MatchNameModel = match_team_name
+        self.username: str = username
+        self.password: str = password
+        self.state_data: StateSchema = None
+        self.winner_team: MatchNameModel = None
 
-    async def send_team_info(self, match_id: UUID, team_info: TeamModel):
-        async with aiohttp.ClientSession(auth=BasicAuth(login=user, password=password)) as session:
-            async with session.post(
-                url=TEAM_INFO_URL,
-                params={"match_id": match_id,
-                        "expected_match_team_name": self.match_team_name.value},
-                json=team_info.model_dump(),
-            ) as response:
-                if response.status == 200:
-                    self.logger.info("Team information successfully sent.")
-                    self.match_team_name = await response.json()
-                    print(f"team_name: {self.match_team_name}")
-                elif response.status == 401:
-                    self.logger.error(f"response: {response}")
-                    self.logger.error("Unauthorized access. Please check your credentials.")
-                else:
-                    self.logger.error("Failed to send team information.")
+    async def send_team_info(
+        self, team_info: TeamModel
+    ) -> MatchNameModel:
+        """Send team information to the server.
+        Args:
+            match_id (UUID): To identify the match.
+            team_info (TeamModel):
+                use_default_cinfig (bool): Whether to use default configuration.
+                team_name (str): Your team name.
+                match_team_name (MatchNameModel): The name of the team in the match.
+                player1 (PlayerModel): Player 1 information.
+                player2 (PlayerModel): Player 2 information.
+                player3 (PlayerModel): Player 3 information.
+                player4 (PlayerModel): Player 4 information.
+        """
 
-    async def send_shot_info(self, match_id: UUID, shot_info: ShotInfoModel):
-        requests.post(
-            url=SHOT_INFO_URL,
-            params={"match_id": match_id, "shot_info": shot_info.model_dump_json()},
-            auth=HTTPBasicAuth(username=user, password=password),
-        )
+        async with aiohttp.ClientSession(
+            auth=BasicAuth(login=self.username, password=self.password)
+        ) as session:
+            try:
+                async with session.post(
+                    url=TEAM_INFO_URL,
+                    params={
+                        "match_id": self.match_id,
+                        "expected_match_team_name": self.match_team_name.value,
+                    },
+                    json=team_info.model_dump(),
+                ) as response:
 
-    async def receive_state_data(self, match_id: UUID):
-        response = requests.get(
-            url=RECEIVE_STATE_URL,
-            params=match_id,
-            auth=HTTPBasicAuth(username=user, password=password),
-        )
-        state_data = SSEClient(response)
+                        # Successful response
+                        if response.status == 200:
+                            self.logger.info("Team information successfully sent.")
+                            self.match_team_name = await response.json()
+                            print(f"team_name: {self.match_team_name}")
 
-        state_data = await asyncio.wait_for(self.websocket.recv(), timeout=50.0)
-        state_data = json.loads(state_data)
+                        # Unauthorized access
+                        elif response.status == 401:
+                            self.logger.error(f"response: {response}")
+                            self.logger.error(
+                                "Unauthorized access. Please check your credentials."
+                            )
+                        else:
+                            self.logger.error("Failed to send team information.")
+            except aiohttp.client_exceptions.ServerDisconnectedError:
+                self.logger.error("Server is not running. Please contact the administrator.")
 
-        stone_coordinate_data = state_data.get("stone_coordinate", {}).get(
-            "stone_coordinate_data"
-        )
-        if isinstance(stone_coordinate_data, dict):
-            for team, coords in stone_coordinate_data.items():
-                stone_coordinate_data[team] = [
-                    CoordinateDataSchema(**coord) for coord in coords
-                ]
-
-        # Convert score to the appropriate format
-        score_data = state_data.get("score", {})
-        if isinstance(score_data, dict):
-            state_data["score"] = ScoreSchema(**score_data)
-        # self.logger.info(f"state_data.stone_coordinate: {state_data.stone_coordinate}")
-
-        self.state_data = StateSchema(**state_data)
-        # self.logger.info(f"Received state_data: {self.state_data}")
+        return self.match_team_name
 
     async def send_shot_info(
         self,
@@ -132,10 +125,87 @@ class DCClient:
             angular_velocity=angular_velocity,
             shot_angle=shot_angle,
         )
-        if self.websocket.state == websockets.protocol.State.OPEN:
-            await self.websocket.send(shot_info.model_dump_json())
-        else:
-            self.logger.error("WebSocket connection is closed. Cannot send shot_info.")
+        
+        async with aiohttp.ClientSession(
+            auth=BasicAuth(login=self.username, password=self.password)
+        ) as session:
+            try:
+                async with session.post(
+                    url=SHOT_INFO_URL,
+                    params={"match_id": self.match_id},
+                    json=shot_info.model_dump(),
+                ) as response:
+                    # Successful response
+                    if response.status == 200:
+                        self.logger.debug("Shot information successfully sent.")
+                    # Unauthorized access
+                    elif response.status == 401:
+                        self.logger.error(f"response: {response}")
+                        self.logger.error(
+                            "Unauthorized access. Please check your credentials."
+                        )
+                    else:
+                        self.logger.error(f"response: {response}")
+                        self.logger.error("Failed to send shot information.")
+            except aiohttp.client_exceptions.ServerDisconnectedError:
+                self.logger.error("Server is not running. Please contact the administrator.")
+            except Exception as e:
+                self.logger.error(f"An error occurred: {e}")
+
+
+    async def receive_state_data(self) -> AsyncGenerator[StateSchema, None]:
+        url = f"{SSE_URL}/{self.match_id}"
+        while True:
+            try:
+                async with client.EventSource(
+                    url=url, auth=BasicAuth(login=self.username, password=self.password), reconnection_time=5, max_connect_retry=5
+                ) as sse_client:
+
+                    async for event in sse_client:
+                        if event.type == "latest_state_update":
+                            latest_state_data: StateSchema = json.loads(event.data)
+                            latest_state_data = StateSchema(**latest_state_data)
+                            self.state_data = latest_state_data
+                            self.logger.info(f"Received latest state data: {latest_state_data}")
+                            yield latest_state_data
+
+                        elif event.type == "state_update":
+                            state_data: StateSchema = json.loads(event.data)
+                            state_data = StateSchema(**state_data)
+                            self.logger.info(f"Received state data: {state_data}")
+                            
+            except aiohttp.client_exceptions.ServerDisconnectedError:
+                self.logger.error("Server is not running. Please contact the administrator.")
+                break
+            except TimeoutError:
+                self.logger.error("Timeout error occurred while receiving state data.")
+                await asyncio.sleep(1)
+            except Exception as e:
+                self.logger.error(f"An error occurred: {e}")
+                await asyncio.sleep(5)
+
+        # state_data = sse_client(response)
+
+        # state_data = await asyncio.wait_for(self.websocket.recv(), timeout=50.0)
+        # state_data = json.loads(state_data)
+
+        # stone_coordinate_data = state_data.get("stone_coordinate", {}).get(
+        #     "stone_coordinate_data"
+        # )
+        # if isinstance(stone_coordinate_data, dict):
+        #     for team, coords in stone_coordinate_data.items():
+        #         stone_coordinate_data[team] = [
+        #             CoordinateDataSchema(**coord) for coord in coords
+        #         ]
+
+        # # Convert score to the appropriate format
+        # score_data = state_data.get("score", {})
+        # if isinstance(score_data, dict):
+        #     state_data["score"] = ScoreSchema(**score_data)
+        # # self.logger.info(f"state_data.stone_coordinate: {state_data.stone_coordinate}")
+
+        # self.state_data = StateSchema(**state_data)
+        # # self.logger.info(f"Received state_data: {self.state_data}")
 
     def get_end_number(self):
         return self.state_data.end_number
@@ -166,47 +236,7 @@ class DCClient:
 
 
 async def main():
-    client = WebsocketClient()
-    with open("match_id.json", "r") as f:
-        match_id = json.load(f)
-    client.logger.info(f"match_id: {match_id}")
-    with open("team1_config.json", "r") as f:
-        data = json.load(f)
-    client_data = TeamModel(**data)
-    # match_id = requests.get(f"{URL}/get_match_id", json=data).json()
-    # logging.info(f"match_id: {match_id}")
-
-    # team_name = asyncio.run(client.initialize(match_id))
-    # logging.info(f"team_name: {team_name}")
-
-    team_name = await client.initialize(match_id, 1, client_data)
-
-    # Start match
-    while True:
-        # Receive state data
-        await client.receive_state_data()
-
-        if (winner_team := client.get_winner_team()) is not None:
-            client.logger.info(f"Winner: {winner_team}")
-            break
-
-        next_shot_team = client.get_next_team()
-        client.logger.info(f"next_shot_team: {next_shot_team}")
-
-        if next_shot_team == team_name:
-            translation_velocity = 2.371
-            angular_velocity_sign = -1
-            angular_velocity = np.pi / 2
-            shot_angle = 91.7
-            await client.send_shot_info(
-                translation_velocity,
-                angular_velocity_sign,
-                angular_velocity,
-                shot_angle,
-            )
-
-    await client.disconnect_websocket()
-
+    pass
 
 if __name__ == "__main__":
     asyncio.run(main())

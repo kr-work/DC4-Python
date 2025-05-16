@@ -1,24 +1,24 @@
 {
     "use_default_config": false,
-    "team_name": "client0",
+    "team_name": "client111112",
     "player1": {
         "max_velocity": 4.0,
         "shot_dispersion_rate": 0.1,
-        "player_name": "player1"
+        "player_name": "peyang"
     },
     "player2": {
         "max_velocity": 4.0,
         "shot_dispersion_rate": 0.1,
-        "player_name": "player2"
+        "player_name": "oigwo"
     },
     "player3": {
         "max_velocity": 4.0,
         "shot_dispersion_rate": 0.1,
-        "player_name": "player3"
+        "player_name": "apwegwpe"
     },
     "player4": {
         "max_velocity": 4.0,
         "shot_dispersion_rate": 0.1,
-        "player_name": "player4"
+        "player_name": "gpwepg"
     }
 }

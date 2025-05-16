@@ -1,0 +1,51 @@
+import asyncio
+import json
+import numpy as np
+
+from load_secrets import username, password
+from dcclient.dc_client import DCClient
+from dcclient.send_database import TeamModel, MatchNameModel
+
+
+async def main():
+    # 最初のエンドにおいて、team0が先攻、team1が後攻です。
+    # デフォルトではteam1となっており、先攻に切り替えたい場合は下記を
+    # team_name=MatchNameModel.team0
+    # に変更してください
+    # なお、先に
+    with open("match_id.json", "r") as f:
+        match_id = json.load(f)
+    client = DCClient(match_id=match_id, username=username, password=password, match_team_name=MatchNameModel.team0)
+    # client.logger.info(f"match_id: {match_id}")
+    with open("team0_config.json", "r") as f:
+        data = json.load(f)
+    client_data = TeamModel(**data)
+    client.logger.info(f"client_data.team_name: {client_data.team_name}")
+    client.logger.debug(f"client_data: {client_data}")
+
+    match_team_name: MatchNameModel = await client.send_team_info(client_data)
+
+    async for state_data in client.receive_state_data():
+        # client.logger.info(f"state_data: {state_data}")
+        if (winner_team := client.get_winner_team()) is not None:
+            client.logger.info(f"Winner: {winner_team}")
+            break
+
+        next_shot_team = client.get_next_team()
+        client.logger.info(f"next_shot_team: {next_shot_team}")
+
+        if next_shot_team == match_team_name:
+            translation_velocity = 2.371
+            angular_velocity_sign = 1
+            angular_velocity = np.pi / 2
+            shot_angle = 91.7
+            client.logger.info(f"translation_velocity: {translation_velocity}")
+            await client.send_shot_info(
+                translation_velocity=translation_velocity,
+                angular_velocity_sign=angular_velocity_sign,
+                shot_angle=shot_angle,
+                angular_velocity=angular_velocity,
+            )
+
+if __name__ == "__main__":
+    asyncio.run(main())
