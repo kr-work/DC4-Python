@@ -10,6 +10,8 @@ readme = "README.md"
 authors = [
     { name = "kr-work", email = "81555178+kr-work@users.noreply.github.com" }
 ]
+license = {file = "LICENSE"}
+license-files = ["LICENSE"]
 dependencies = [
     "aiohttp==3.11.13",
     "numpy>=1.26.4",
