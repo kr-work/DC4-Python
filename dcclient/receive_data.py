@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Json
+from pydantic import BaseModel, ConfigDict, Json
 from typing import Optional, Dict, List
 from uuid import UUID
 from datetime import datetime
@@ -8,16 +8,14 @@ class TournamentSchema(BaseModel):
     tournament_id: UUID
     tournament_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PhysicalSimulatorSchema(BaseModel):
     physical_simulator_id: UUID
     simulator_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlayerSchema(BaseModel):
@@ -36,23 +34,20 @@ class CoordinateDataSchema(BaseModel):
     x: float
     y: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StoneCoordinateSchema(BaseModel):
     data: Dict[str, List[CoordinateDataSchema]]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScoreSchema(BaseModel):
     team0: list
     team1: list
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShotInfoSchema(BaseModel):
@@ -86,8 +81,7 @@ class StateSchema(BaseModel):
     stone_coordinate: Optional[StoneCoordinateSchema] = None
     score: Optional[ScoreSchema] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MatchDataSchema(BaseModel):
@@ -107,5 +101,5 @@ class MatchDataSchema(BaseModel):
     tournament: Optional[TournamentSchema] = None
     simulator: Optional[PhysicalSimulatorSchema] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
