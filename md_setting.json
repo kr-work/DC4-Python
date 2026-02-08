@@ -6,7 +6,7 @@
     "simulator": {
         "simulator_name": "fcv1"
     },
-    "applied_rule": "modified_fgz",
+    "applied_rule": "modified_fgz_rule",
     "time_limit": 219,
     "extra_end_time_limit": 21.9,
     "standard_end_count": 8,

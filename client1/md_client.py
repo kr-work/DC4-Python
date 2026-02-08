@@ -25,7 +25,6 @@ async def main():
     # デフォルトではteam1となっており、先攻に切り替えたい場合は下記を
     # team_name=MatchNameModel.team0
     # に変更してください
-    # なお、先に
     json_path = Path(__file__).parents[1] / "match_id.json"
     with open(json_path, "r") as f:
         match_id = json.load(f)
@@ -53,7 +52,7 @@ async def main():
         next_shot_team = client.get_next_team()
         client.logger.info(f"next_shot_team: {next_shot_team}")
 
-        if state_data.next_shot_team is None and state_data.mix_doubles_settings is not None:
+        if state_data.next_shot_team is None and state_data.mix_doubles_settings is not None and state_data.last_move is None:
             if state_data.mix_doubles_settings.end_setup_team == match_team_name:
                 client.logger.info("You select the positioned stones.")
                 # You can choose one of the following patterns:

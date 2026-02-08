@@ -34,12 +34,12 @@ PASS_WORD="password"
 game_mode には **standard** または **mixed_doubles** を入れてください。
 - standardを選択した場合
 4人制での対戦が開始されます。この場合は、**applied_rule**には
-    - five_lock_rule
+    - fgz_rule
     - no_tick_rule
 のいずれかを選択してください。
 - mixed_doublesを選択した場合
 ミックスダブルスに対応した対戦が開始されます。この場合は**applied_rule**には
-    - modified_fgz
+    - modified_fgz_rule
     を選択してください
 なお、ミックスダブルスの際には、**positioned_stones_pattern**に0~5の数値を入れてください。こちらは、各エンドにおける置き石のストーン配置を決定するものです。
 ![](./figure/positioned_stone.png)

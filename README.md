@@ -39,12 +39,12 @@ Please set game_mode to either **standard** or **mixed_doubles**.
 - If standard is selected: 
 A 4-player match will start. 
 In this case, please select one of the following for applied_rule:
-    - five_rock_rule
+    - fgz_rule
     - no_tick_rule
 
 - If mixed_doubles is selected: 
 A match compatible with Mixed Doubles will start. In this case, please select following for applied_rule.
-    - modified_fgz
+    - modified_fgz_rule
 
 (Currently, "fcv1" is the only simulator available, so matches cannot be played on other simulators.)
 
