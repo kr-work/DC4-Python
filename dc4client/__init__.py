@@ -1,9 +1,4 @@
-
-from dc4client.dc_client import DCClient
-from dc4client.match_maker_client import MatchMakerClient
-
-__all__ = [
-	"DCClient",
-	"MatchMakerClient",
-]
-
+from .dc_client import *
+from .match_maker_client import *
+from .send_data import *
+from .receive_data import *
