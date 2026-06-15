@@ -102,9 +102,12 @@
   "second_team_extra_end_remaining_time": 25.0,
   "mixed_doubles_settings": null,
   "last_move": {
-    "translational_velocity": 2.31,
-    "angular_velocity": 1.57,
-    "shot_angle": 1.57
+    "translational_velocity": 2.25,
+    "angular_velocity": 1.50,
+    "shot_angle": 1.52,
+    "actual_translational_velocity": 2.31,
+    "actual_angular_velocity": 1.57,
+    "actual_shot_angle": 1.57
   }
   "stone_coordinate_data": {
     "team0": [
